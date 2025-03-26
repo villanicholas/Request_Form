@@ -60,12 +60,25 @@
         .admin-login-btn:hover {
             background-color: #5a6268;
         }
+        /* Added header styles */
+        .header {
+            display: flex;
+            justify-content: flex-end;
+            padding: 15px 20px;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #ddd;
+        }
     </style>
 </head>
 <body>
+    <!-- Added header with admin login button -->
+    <div class="header">
+        <button id="admin-login-btn" class="admin-login-btn">Admin Login</button>
+    </div>
+    
     <div class="container">
         <div class="paper">
-            <h1>Traditions Collegiate Apparel - School Request Form</h1>
+            <h1>Traditions Collegiate Apparel - Request Form</h1>
             <div id="error-message" class="alert error" style="display: none;"></div>
             <div id="success-message" class="alert success" style="display: none;"></div>
             
@@ -127,9 +140,7 @@
                 </tbody>
             </table>
             
-            <div class="admin-login-container">
-                <button id="admin-login-btn" class="admin-login-btn">Admin Login</button>
-            </div>
+            <!-- Removed admin login button from here -->
         </div>
     </div>
 

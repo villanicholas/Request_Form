@@ -250,7 +250,6 @@ app.on('request', async (req, res) => {
       const body = await parseBody(req);
       const { username, password } = body;
 
-      // TEMPORARY: Bypass password verification for testing purposes
       db.get(
         'SELECT * FROM admin_users WHERE username = ?',
         [username],
@@ -261,12 +260,10 @@ app.on('request', async (req, res) => {
             return;
           }
 
-          if (!user) {
+          if (!user || user.password !== password) {
             sendJsonResponse(res, { error: 'Invalid credentials' }, 401);
             return;
           }
-
-          console.log('NOTICE: Password verification bypassed for testing purposes');
           
           const token = Buffer.from(JSON.stringify({
             id: user.id,
