@@ -25,8 +25,6 @@ h1 {
     color: #1976d2;
     font-weight: 500;
     margin-bottom: 24px;
-    font-size: 1.8rem;
-    word-wrap: break-word;
 }
 
 h3 {
@@ -221,78 +219,4 @@ small {
     background-color: #e8f5e9;
     color: #2e7d32;
     border-left: 4px solid #2e7d32;
-}
-
-/* Added responsive styles for mobile */
-@media (max-width: 768px) {
-    .container {
-        margin: 20px auto;
-        padding: 0 10px;
-    }
-    
-    .paper {
-        padding: 20px;
-    }
-    
-    h1 {
-        font-size: 1.5rem;
-        text-align: center;
-    }
-    
-    .dropdown-item {
-        padding: 10px;
-    }
-    
-    .school-name {
-        font-size: 0.9rem;
-    }
-    
-    .school-location {
-        font-size: 0.8rem;
-    }
-    
-    /* Make table responsive */
-    .stats-container {
-        overflow-x: auto;
-    }
-    
-    .stats-table {
-        width: 100%;
-        min-width: 400px; /* Ensures the table doesn't get too small */
-    }
-    
-    .stats-table th, .stats-table td {
-        padding: 8px;
-        font-size: 0.9rem;
-    }
-    
-    /* Improve touch targets for mobile */
-    .btn-submit, input[type="text"], input[type="email"] {
-        padding: 14px;
-        font-size: 16px; /* Minimum 16px for inputs to prevent zoom on iOS */
-    }
-    
-    .dropdown-item {
-        min-height: 44px; /* Minimum touch target size */
-    }
-    
-    /* Fix admin button in header for mobile */
-    .header {
-        padding: 10px;
-    }
-    
-    .admin-login-btn {
-        font-size: 0.9rem;
-    }
-}
-
-/* Additional styles for very small screens */
-@media (max-width: 480px) {
-    .paper {
-        padding: 15px;
-    }
-    
-    h1 {
-        font-size: 1.3rem;
-    }
 } 

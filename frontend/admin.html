@@ -2,12 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#1976d2">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - College Merchandise Requests</title>
-    <link rel="manifest" href="/manifest.json">
     <!-- Add Chart.js for visualizations -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -157,66 +153,6 @@
         .home-button:hover {
             background-color: #5a6268;
         }
-        
-        /* Added responsive styles for mobile */
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-            
-            .container {
-                padding: 15px;
-            }
-            
-            .dashboard-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-            }
-            
-            .dashboard-tabs {
-                overflow-x: auto;
-                width: 100%;
-            }
-            
-            .tab {
-                padding: 8px 15px;
-                white-space: nowrap;
-            }
-            
-            .analytics-container {
-                grid-template-columns: 1fr;
-            }
-            
-            table {
-                display: block;
-                overflow-x: auto;
-            }
-            
-            th, td {
-                padding: 8px;
-                font-size: 0.9rem;
-            }
-            
-            .action-buttons {
-                flex-direction: column;
-            }
-            
-            .status-select {
-                max-width: 100px;
-                font-size: 0.9rem;
-            }
-            
-            /* Improve touch targets */
-            button, .action-button, .tab, .home-button {
-                min-height: 44px;
-            }
-            
-            input {
-                padding: 12px;
-                font-size: 16px;
-            }
-        }
     </style>
 </head>
 <body>
@@ -299,12 +235,7 @@
     </div>
 
     <script>
-        // Use dynamic API URL based on window location instead of hardcoded localhost
-        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-            ? 'http://localhost:5001' 
-            : 'https://request-form-backend.onrender.com'; // Replace with your actual deployed backend URL
-        const API_URL = `${API_BASE_URL}/api`;
-        
+        const API_URL = 'http://localhost:5001/api';
         let token = localStorage.getItem('adminToken');
         let schoolStatistics = [];
 

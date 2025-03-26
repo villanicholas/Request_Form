@@ -1,9 +1,5 @@
 // Configuration
-// Use dynamic API URL based on window location instead of hardcoded localhost
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'http://localhost:5001' 
-    : 'https://request-form-backend.onrender.com'; // Replace with your actual deployed backend URL
-const API_URL = `${API_BASE_URL}/api`;
+const API_URL = 'http://localhost:5001/api';
 
 // DOM Elements
 const collegeSearchInput = document.getElementById('college-search');
