@@ -6,6 +6,61 @@
     <title>College Merchandise Request</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
     <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Table styling */
+        .stats-container {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .stats-table th, .stats-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .stats-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .stats-table tbody tr:hover {
+            background-color: #f5f5f5;
+        }
+        .status-pending {
+            color: #ffc107;
+        }
+        .status-approved, .status-accepted {
+            color: #28a745;
+        }
+        .status-rejected, .status-declined {
+            color: #dc3545;
+        }
+        .status-applied {
+            color: #17a2b8;
+        }
+        .admin-controls {
+            display: none;
+            margin-top: 10px;
+        }
+        .admin-login-btn {
+            background-color: #6c757d;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .admin-login-btn:hover {
+            background-color: #5a6268;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -43,8 +98,112 @@
                 <button type="submit" class="btn-submit">Submit Request</button>
             </form>
         </div>
+        
+        <!-- School Statistics Table -->
+        <div class="stats-container">
+            <h2>College Merchandise Request Status</h2>
+            <p>The table below shows colleges that have requested merchandise and their current status.</p>
+            
+            <div class="admin-controls">
+                <p>Logged in as Admin. You can edit statuses in the <a href="/admin.html">Admin Dashboard</a>.</p>
+                <button id="logout-btn" class="btn-submit">Logout</button>
+            </div>
+            
+            <div id="stats-loading" class="loading">
+                <div class="spinner"></div>
+                <p>Loading statistics...</p>
+            </div>
+            
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>College</th>
+                        <th>Total Requests</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="stats-table-body">
+                    <!-- School statistics will be populated here -->
+                </tbody>
+            </table>
+            
+            <div class="admin-login-container">
+                <button id="admin-login-btn" class="admin-login-btn">Admin Login</button>
+            </div>
+        </div>
     </div>
 
     <script src="script.js"></script>
+    <script>
+        // School statistics functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const API_URL = 'http://localhost:5001/api';
+            const statsTableBody = document.getElementById('stats-table-body');
+            const statsLoading = document.getElementById('stats-loading');
+            const adminLoginBtn = document.getElementById('admin-login-btn');
+            const adminControls = document.querySelector('.admin-controls');
+            const logoutBtn = document.getElementById('logout-btn');
+            
+            // Check if admin is logged in
+            const adminToken = localStorage.getItem('adminToken');
+            if (adminToken) {
+                adminLoginBtn.style.display = 'none';
+                adminControls.style.display = 'block';
+            }
+            
+            // Admin login button click
+            adminLoginBtn.addEventListener('click', function() {
+                window.location.href = '/admin.html';
+            });
+            
+            // Admin logout
+            logoutBtn?.addEventListener('click', function() {
+                localStorage.removeItem('adminToken');
+                adminControls.style.display = 'none';
+                adminLoginBtn.style.display = 'block';
+            });
+            
+            // Fetch school statistics
+            async function fetchSchoolStatistics() {
+                try {
+                    statsLoading.style.display = 'flex';
+                    
+                    const response = await fetch(`${API_URL}/public/school-stats`);
+                    if (!response.ok) throw new Error('Failed to fetch statistics');
+                    
+                    const statistics = await response.json();
+                    displaySchoolStatistics(statistics);
+                } catch (error) {
+                    console.error('Error fetching school statistics:', error);
+                } finally {
+                    statsLoading.style.display = 'none';
+                }
+            }
+            
+            // Display school statistics
+            function displaySchoolStatistics(statistics) {
+                statsTableBody.innerHTML = '';
+                
+                statistics.forEach(school => {
+                    const row = document.createElement('tr');
+                    
+                    // Format the status for display
+                    const statusClass = school.latest_status ? `status-${school.latest_status.toLowerCase()}` : '';
+                    const statusText = school.latest_status ? school.latest_status.charAt(0).toUpperCase() + school.latest_status.slice(1) : 'Unknown';
+                    
+                    row.innerHTML = `
+                        <td>${school.college_name}</td>
+                        <td>${school.request_count}</td>
+                        <td class="${statusClass}">${statusText}</td>
+                    `;
+                    
+                    statsTableBody.appendChild(row);
+                });
+            }
+            
+            // Initial load
+            fetchSchoolStatistics();
+        });
+    </script>
 </body>
 </html> 
