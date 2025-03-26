@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - College Merchandise Requests</title>
+    <!-- Add Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -73,11 +75,14 @@
         .status-pending {
             color: #ffc107;
         }
-        .status-approved {
+        .status-approved, .status-accepted {
             color: #28a745;
         }
-        .status-rejected {
+        .status-rejected, .status-declined {
             color: #dc3545;
+        }
+        .status-applied {
+            color: #17a2b8;
         }
         .action-buttons {
             display: flex;
@@ -89,6 +94,64 @@
         }
         .hidden {
             display: none;
+        }
+        .dashboard-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background-color: white;
+            border-bottom: 1px solid white;
+            margin-bottom: -1px;
+        }
+        .tab-content {
+            padding: 20px 0;
+        }
+        .analytics-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .chart-container {
+            padding: 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status-select {
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .home-button {
+            background-color: #6c757d;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+        }
+        .home-button:hover {
+            background-color: #5a6268;
         }
     </style>
 </head>
@@ -111,26 +174,70 @@
         </div>
 
         <div id="dashboardSection" class="hidden">
-            <h2>Merchandise Requests</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>College</th>
-                        <th>Email</th>
-                        <th>Status</th>
-                        <th>Date</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="requestsTableBody"></tbody>
-            </table>
+            <div class="dashboard-header">
+                <h2>Admin Dashboard</h2>
+                <a href="/" class="home-button">Back to Homepage</a>
+            </div>
+            
+            <div class="dashboard-tabs">
+                <div class="tab active" data-tab="requests">Requests</div>
+                <div class="tab" data-tab="analytics">Analytics</div>
+            </div>
+            
+            <div id="requestsTab" class="tab-content">
+                <h3>Merchandise Requests</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>College</th>
+                            <th>Email</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requestsTableBody"></tbody>
+                </table>
+            </div>
+            
+            <div id="analyticsTab" class="tab-content hidden">
+                <h3>School Request Analytics</h3>
+                <div class="analytics-container">
+                    <div class="chart-container">
+                        <h4>Top Requested Schools</h4>
+                        <canvas id="schoolRequestsChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h4>Request Status Distribution</h4>
+                        <canvas id="statusDistributionChart"></canvas>
+                    </div>
+                </div>
+                
+                <h3>Detailed School Statistics</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>School</th>
+                            <th>Total Requests</th>
+                            <th>Pending</th>
+                            <th>Applied</th>
+                            <th>Accepted</th>
+                            <th>Declined</th>
+                            <th>Approved</th>
+                            <th>Rejected</th>
+                        </tr>
+                    </thead>
+                    <tbody id="schoolStatsTableBody"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <script>
-        const API_URL = 'http://localhost:5000/api';
+        const API_URL = 'http://localhost:5001/api';
         let token = localStorage.getItem('adminToken');
+        let schoolStatistics = [];
 
         // DOM Elements
         const loginSection = document.getElementById('loginSection');
@@ -138,10 +245,42 @@
         const loginForm = document.getElementById('loginForm');
         const loginError = document.getElementById('loginError');
         const requestsTableBody = document.getElementById('requestsTableBody');
+        const schoolStatsTableBody = document.getElementById('schoolStatsTableBody');
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        // Charts
+        let schoolRequestsChart;
+        let statusDistributionChart;
 
         // Event Listeners
         loginForm.addEventListener('submit', handleLogin);
         document.addEventListener('DOMContentLoaded', checkAuth);
+        
+        // Tab navigation
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.getAttribute('data-tab');
+                
+                // Update active tab
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Show corresponding content
+                tabContents.forEach(content => {
+                    if (content.id === `${tabId}Tab`) {
+                        content.classList.remove('hidden');
+                    } else {
+                        content.classList.add('hidden');
+                    }
+                });
+                
+                // If analytics tab is selected, update charts
+                if (tabId === 'analytics') {
+                    fetchSchoolStatistics();
+                }
+            });
+        });
 
         // Functions
         function checkAuth() {
@@ -211,15 +350,27 @@
             requestsTableBody.innerHTML = '';
             requests.forEach(request => {
                 const row = document.createElement('tr');
+                
+                // Create the status dropdown
+                const statusSelect = `
+                    <select class="status-select" onchange="updateStatus(${request.id}, this.value)">
+                        <option value="pending" ${request.status === 'pending' ? 'selected' : ''}>Pending</option>
+                        <option value="applied" ${request.status === 'applied' ? 'selected' : ''}>Applied</option>
+                        <option value="accepted" ${request.status === 'accepted' ? 'selected' : ''}>Accepted</option>
+                        <option value="declined" ${request.status === 'declined' ? 'selected' : ''}>Declined</option>
+                        <option value="approved" ${request.status === 'approved' ? 'selected' : ''}>Approved</option>
+                        <option value="rejected" ${request.status === 'rejected' ? 'selected' : ''}>Rejected</option>
+                    </select>
+                `;
+                
                 row.innerHTML = `
                     <td>${request.id}</td>
                     <td>${request.college_name}</td>
                     <td>${request.email}</td>
-                    <td class="status-${request.status.toLowerCase()}">${request.status}</td>
+                    <td class="status-${request.status.toLowerCase()}">${statusSelect}</td>
                     <td>${new Date(request.created_at).toLocaleString()}</td>
                     <td class="action-buttons">
-                        <button class="action-button" onclick="updateStatus(${request.id}, 'approved')">Approve</button>
-                        <button class="action-button" onclick="updateStatus(${request.id}, 'rejected')">Reject</button>
+                        <button class="action-button" onclick="viewDetails(${request.id})">Details</button>
                     </td>
                 `;
                 requestsTableBody.appendChild(row);
@@ -247,6 +398,138 @@
                     location.reload();
                 }
             }
+        }
+        
+        function viewDetails(id) {
+            // Placeholder for future detailed view
+            alert(`View details for request #${id}`);
+        }
+        
+        async function fetchSchoolStatistics() {
+            try {
+                const response = await fetch(`${API_URL}/statistics/schools`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to fetch statistics');
+
+                schoolStatistics = await response.json();
+                displaySchoolStatistics(schoolStatistics);
+                createCharts(schoolStatistics);
+            } catch (error) {
+                console.error('Error fetching school statistics:', error);
+            }
+        }
+        
+        function displaySchoolStatistics(stats) {
+            schoolStatsTableBody.innerHTML = '';
+            stats.forEach(school => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${school.college_name}</td>
+                    <td>${school.request_count}</td>
+                    <td>${school.pending_count}</td>
+                    <td>${school.applied_count}</td>
+                    <td>${school.accepted_count}</td>
+                    <td>${school.declined_count}</td>
+                    <td>${school.approved_count}</td>
+                    <td>${school.rejected_count}</td>
+                `;
+                schoolStatsTableBody.appendChild(row);
+            });
+        }
+        
+        function createCharts(statistics) {
+            // Destroy existing charts if they exist
+            if (schoolRequestsChart) schoolRequestsChart.destroy();
+            if (statusDistributionChart) statusDistributionChart.destroy();
+            
+            // Prepare data for school requests chart (top 10 schools)
+            const topSchools = statistics.slice(0, 10);
+            const schoolLabels = topSchools.map(school => school.college_name);
+            const schoolCounts = topSchools.map(school => school.request_count);
+            
+            // Create school requests chart
+            const schoolCtx = document.getElementById('schoolRequestsChart').getContext('2d');
+            schoolRequestsChart = new Chart(schoolCtx, {
+                type: 'bar',
+                data: {
+                    labels: schoolLabels,
+                    datasets: [{
+                        label: 'Number of Requests',
+                        data: schoolCounts,
+                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Prepare data for status distribution chart
+            // Aggregate status counts across all schools
+            const statusCounts = {
+                pending: statistics.reduce((sum, school) => sum + school.pending_count, 0),
+                applied: statistics.reduce((sum, school) => sum + school.applied_count, 0),
+                accepted: statistics.reduce((sum, school) => sum + school.accepted_count, 0),
+                declined: statistics.reduce((sum, school) => sum + school.declined_count, 0),
+                approved: statistics.reduce((sum, school) => sum + school.approved_count, 0),
+                rejected: statistics.reduce((sum, school) => sum + school.rejected_count, 0)
+            };
+            
+            // Create status distribution chart
+            const statusCtx = document.getElementById('statusDistributionChart').getContext('2d');
+            statusDistributionChart = new Chart(statusCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Pending', 'Applied', 'Accepted', 'Declined', 'Approved', 'Rejected'],
+                    datasets: [{
+                        data: [
+                            statusCounts.pending,
+                            statusCounts.applied,
+                            statusCounts.accepted,
+                            statusCounts.declined,
+                            statusCounts.approved,
+                            statusCounts.rejected
+                        ],
+                        backgroundColor: [
+                            '#ffc107', // pending - yellow
+                            '#17a2b8', // applied - cyan
+                            '#28a745', // accepted - green
+                            '#dc3545', // declined - red
+                            '#4caf50', // approved - green (different shade)
+                            '#f44336'  // rejected - red (different shade)
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        }
+                    }
+                }
+            });
         }
     </script>
 </body>

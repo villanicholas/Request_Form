@@ -208,22 +208,40 @@ app.on('request', async (req, res) => {
         return;
       }
 
-      db.run(
-        `INSERT INTO requests (college_name, email)
-         VALUES (?, ?)`,
-        [body.college_name, body.email],
-        function(err) {
-          if (err) {
-            console.error('Error saving request:', err);
-            sendJsonResponse(res, { error: 'Failed to save request' }, 500);
-            return;
-          }
-          sendJsonResponse(res, {
-            message: 'Request submitted successfully',
-            request_id: this.lastID
-          }, 201);
+      // Check if email has already been used
+      db.get('SELECT id FROM requests WHERE email = ?', [body.email], (err, row) => {
+        if (err) {
+          console.error('Error checking email:', err);
+          sendJsonResponse(res, { error: 'Failed to process request' }, 500);
+          return;
         }
-      );
+        
+        if (row) {
+          // Email already exists
+          sendJsonResponse(res, { 
+            error: 'This email has already been used to submit a request. Each email can only be used once.'
+          }, 400);
+          return;
+        }
+        
+        // Email doesn't exist, proceed with insertion
+        db.run(
+          `INSERT INTO requests (college_name, email)
+           VALUES (?, ?)`,
+          [body.college_name, body.email],
+          function(err) {
+            if (err) {
+              console.error('Error saving request:', err);
+              sendJsonResponse(res, { error: 'Failed to save request' }, 500);
+              return;
+            }
+            sendJsonResponse(res, {
+              message: 'Request submitted successfully',
+              request_id: this.lastID
+            }, 201);
+          }
+        );
+      });
       return;
     }
 
@@ -233,8 +251,8 @@ app.on('request', async (req, res) => {
       const { username, password } = body;
 
       db.get(
-        'SELECT * FROM admin_users WHERE username = ? AND password = ?',
-        [username, password],
+        'SELECT * FROM admin_users WHERE username = ?',
+        [username],
         (err, user) => {
           if (err) {
             console.error('Error during login:', err);
@@ -242,11 +260,11 @@ app.on('request', async (req, res) => {
             return;
           }
 
-          if (!user) {
+          if (!user || user.password !== password) {
             sendJsonResponse(res, { error: 'Invalid credentials' }, 401);
             return;
           }
-
+          
           const token = Buffer.from(JSON.stringify({
             id: user.id,
             username: user.username
@@ -273,6 +291,55 @@ app.on('request', async (req, res) => {
       return;
     }
 
+    // Get school statistics (admin only)
+    if (req.method === 'GET' && parsedUrl.pathname === '/api/statistics/schools') {
+      authenticateToken(req, res, () => {
+        db.all(
+          `SELECT college_name, COUNT(*) as request_count, 
+          COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_count,
+          COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_count,
+          COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_count,
+          COUNT(CASE WHEN status = 'applied' THEN 1 END) as applied_count,
+          COUNT(CASE WHEN status = 'declined' THEN 1 END) as declined_count,
+          COUNT(CASE WHEN status = 'accepted' THEN 1 END) as accepted_count
+          FROM requests 
+          GROUP BY college_name 
+          ORDER BY request_count DESC`, 
+          [], 
+          (err, rows) => {
+            if (err) {
+              console.error('Error fetching school statistics:', err);
+              sendJsonResponse(res, { error: 'Failed to fetch statistics' }, 500);
+              return;
+            }
+            sendJsonResponse(res, rows);
+          }
+        );
+      });
+      return;
+    }
+
+    // Get public school statistics (no auth required)
+    if (req.method === 'GET' && parsedUrl.pathname === '/api/public/school-stats') {
+      db.all(
+        `SELECT r.college_name, COUNT(*) as request_count, 
+         (SELECT status FROM requests WHERE college_name = r.college_name ORDER BY created_at DESC LIMIT 1) as latest_status
+         FROM requests r
+         GROUP BY r.college_name 
+         ORDER BY request_count DESC`, 
+        [], 
+        (err, rows) => {
+          if (err) {
+            console.error('Error fetching public school statistics:', err);
+            sendJsonResponse(res, { error: 'Failed to fetch statistics' }, 500);
+            return;
+          }
+          sendJsonResponse(res, rows);
+        }
+      );
+      return;
+    }
+
     // Update request status (admin only)
     if (req.method === 'PATCH' && parsedUrl.pathname.startsWith('/api/requests/')) {
       const id = parsedUrl.pathname.split('/').pop();
@@ -280,7 +347,7 @@ app.on('request', async (req, res) => {
         const body = await parseBody(req);
         const { status } = body;
 
-        if (!['pending', 'approved', 'rejected'].includes(status)) {
+        if (!['pending', 'approved', 'rejected', 'applied', 'declined', 'accepted'].includes(status)) {
           sendJsonResponse(res, { error: 'Invalid status' }, 400);
           return;
         }
