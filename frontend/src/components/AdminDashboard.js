@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -9,42 +10,59 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  CircularProgress,
+  Button,
+  Alert,
+  CircularProgress
 } from '@mui/material';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
 import axios from 'axios';
 
-const AdminDashboard = () => {
-  const [stats, setStats] = useState(null);
+function AdminDashboard() {
+  const navigate = useNavigate();
+  const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const token = localStorage.getItem('adminToken');
-        const response = await axios.get('/api/admin/stats', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setStats(response.data);
-      } catch (err) {
-        setError('Error fetching statistics. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
+      navigate('/admin/login');
+      return;
+    }
 
-    fetchStats();
-  }, []);
+    fetchRequests();
+  }, [navigate]);
+
+  const fetchRequests = async () => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await axios.get('http://localhost:5000/api/requests', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setRequests(response.data);
+    } catch (err) {
+      if (err.response?.status === 401) {
+        navigate('/admin/login');
+      } else {
+        setError('Failed to fetch requests. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStatusUpdate = async (id, status) => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      await axios.patch(
+        `http://localhost:5000/api/requests/${id}`,
+        { status },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchRequests();
+    } catch (err) {
+      setError('Failed to update request status. Please try again.');
+    }
+  };
 
   if (loading) {
     return (
@@ -54,76 +72,62 @@ const AdminDashboard = () => {
     );
   }
 
-  if (error) {
-    return (
-      <Box p={3}>
-        <Typography color="error">{error}</Typography>
-      </Box>
-    );
-  }
-
-  const chartData = Object.entries(stats.requests_by_college).map(([college, count]) => ({
-    college,
-    requests: count
-  }));
-
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
-        Request Statistics
+      <Typography variant="h4" component="h1" gutterBottom>
+        Admin Dashboard
       </Typography>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Total Requests: {stats.total_requests}
-        </Typography>
-      </Paper>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      <Paper sx={{ p: 3, mb: 3, height: 400 }}>
-        <Typography variant="h6" gutterBottom>
-          Requests by College
-        </Typography>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="college" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="requests" fill="#1976d2" />
-          </BarChart>
-        </ResponsiveContainer>
-      </Paper>
-
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Detailed Breakdown
-        </Typography>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>College</TableCell>
-                <TableCell align="right">Number of Requests</TableCell>
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>ID</TableCell>
+              <TableCell>College</TableCell>
+              <TableCell>Email</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Date</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {requests.map((request) => (
+              <TableRow key={request.id}>
+                <TableCell>{request.id}</TableCell>
+                <TableCell>{request.college_name}</TableCell>
+                <TableCell>{request.email}</TableCell>
+                <TableCell>{request.status}</TableCell>
+                <TableCell>{new Date(request.created_at).toLocaleDateString()}</TableCell>
+                <TableCell>
+                  {request.status === 'pending' && (
+                    <>
+                      <Button
+                        size="small"
+                        color="success"
+                        onClick={() => handleStatusUpdate(request.id, 'approved')}
+                        sx={{ mr: 1 }}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => handleStatusUpdate(request.id, 'rejected')}
+                      >
+                        Reject
+                      </Button>
+                    </>
+                  )}
+                </TableCell>
               </TableRow>
-            </TableHead>
-            <TableBody>
-              {Object.entries(stats.requests_by_college)
-                .sort(([, a], [, b]) => b - a)
-                .map(([college, count]) => (
-                  <TableRow key={college}>
-                    <TableCell component="th" scope="row">
-                      {college}
-                    </TableCell>
-                    <TableCell align="right">{count}</TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </Box>
   );
-};
+}
 
 export default AdminDashboard; 

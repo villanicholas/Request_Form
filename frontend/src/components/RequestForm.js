@@ -1,133 +1,206 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   TextField,
   Button,
   Typography,
-  Paper,
   Autocomplete,
+  Paper,
   Alert,
+  CircularProgress,
+  InputAdornment
 } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import SchoolIcon from '@mui/icons-material/School';
 import axios from 'axios';
 
-const RequestForm = () => {
-  const [college, setCollege] = useState(null);
-  const [email, setEmail] = useState('');
-  const [collegeOptions, setCollegeOptions] = useState([]);
+function RequestForm() {
+  const [collegeQuery, setCollegeQuery] = useState('');
+  const [colleges, setColleges] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [open, setOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    college_name: '',
+    email: ''
+  });
 
-  const searchColleges = async (query) => {
-    if (query.length < 2) return;
-    try {
-      const response = await axios.get(`/api/colleges/search?q=${query}`);
-      setCollegeOptions(response.data.map(college => ({
-        label: college['school.name'],
-        value: college['school.name']
-      })));
-    } catch (err) {
-      setError('Error searching for colleges. Please try again.');
-    }
-  };
+  useEffect(() => {
+    const searchColleges = async () => {
+      if (collegeQuery.length < 2) {
+        setColleges([]);
+        return;
+      }
+      
+      setLoading(true);
+      try {
+        console.log('Searching for colleges with query:', collegeQuery);
+        const response = await axios.get(`http://localhost:5001/api/search-colleges?query=${encodeURIComponent(collegeQuery)}`);
+        console.log('College search response:', response.data);
+        setColleges(response.data || []);
+      } catch (err) {
+        console.error('College search error:', err);
+        setError('Failed to search colleges. Please try again.');
+        setColleges([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const timeoutId = setTimeout(searchColleges, 300);
+    return () => clearTimeout(timeoutId);
+  }, [collegeQuery]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
-    if (!college || !email) {
-      setError('Please fill in all fields');
-      return;
-    }
-
     try {
-      await axios.post('/api/requests', {
-        college_name: college.label,
-        email: email
-      });
+      await axios.post('http://localhost:5001/api/submit-request', formData);
       setSuccess('Request submitted successfully!');
-      setCollege(null);
-      setEmail('');
+      setFormData({
+        college_name: '',
+        email: ''
+      });
+      setCollegeQuery('');
     } catch (err) {
-      setError(err.response?.data?.error || 'Error submitting request. Please try again.');
+      setError(err.response?.data?.error || 'Failed to submit request. Please try again.');
     }
   };
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   return (
-    <Box
-      sx={{
-        maxWidth: 600,
-        mx: 'auto',
-        mt: 4,
-      }}
-    >
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Request College Merchandise
+    <Paper elevation={3} sx={{ p: 4, maxWidth: 600, mx: 'auto', mt: 4 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
+        College Merchandise Request
+      </Typography>
+
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+
+      <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+        <Typography variant="subtitle1" gutterBottom>
+          Search for your college:
         </Typography>
-        <Typography variant="body1" color="text.secondary" paragraph>
-          Enter your college name and email to request merchandise for your school.
-        </Typography>
-
-        <form onSubmit={handleSubmit}>
-          <Autocomplete
-            options={collegeOptions}
-            value={college}
-            onChange={(event, newValue) => setCollege(newValue)}
-            onInputChange={(event, newInputValue) => searchColleges(newInputValue)}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="College Name"
-                required
-                fullWidth
-                margin="normal"
-                error={!!error && !college}
-                helperText={error && !college ? 'Please select a valid college' : ''}
-              />
-            )}
-            getOptionLabel={(option) => option.label || ''}
-            isOptionEqualToValue={(option, value) => option.value === value.value}
-          />
-
-          <TextField
-            label="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            fullWidth
-            margin="normal"
-            error={!!error && !email}
-            helperText={error && !email ? 'Please enter a valid email' : ''}
-          />
-
-          {error && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              {error}
-            </Alert>
+        
+        <Autocomplete
+          open={open}
+          onOpen={() => {
+            if (collegeQuery.length >= 2) {
+              setOpen(true);
+            }
+          }}
+          onClose={() => setOpen(false)}
+          options={colleges}
+          getOptionLabel={(option) => {
+            // Handle both string value and object value cases
+            if (typeof option === 'string') return option;
+            return option && option.name ? `${option.name} (${option.city}, ${option.state})` : '';
+          }}
+          loading={loading}
+          onInputChange={(event, newInputValue) => {
+            console.log('Input changed to:', newInputValue);
+            setCollegeQuery(newInputValue);
+            if (newInputValue.length >= 2 && !open) {
+              setOpen(true);
+            } else if (newInputValue.length < 2 && open) {
+              setOpen(false);
+            }
+          }}
+          onChange={(event, newValue) => {
+            console.log('Selected value:', newValue);
+            if (newValue) {
+              setFormData(prev => ({
+                ...prev,
+                college_name: newValue.name || ''
+              }));
+            }
+          }}
+          filterOptions={(x) => x} // Don't filter options client-side, we're doing server-side filtering
+          isOptionEqualToValue={(option, value) => 
+            option.name === value.name && 
+            option.city === value.city && 
+            option.state === value.state
+          }
+          renderOption={(props, option) => (
+            <li {...props}>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <SchoolIcon sx={{ color: 'primary.main', mr: 1 }} />
+                <Box>
+                  <Typography variant="body1">{option.name}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {option.city}, {option.state}
+                  </Typography>
+                </Box>
+              </Box>
+            </li>
           )}
-
-          {success && (
-            <Alert severity="success" sx={{ mt: 2 }}>
-              {success}
-            </Alert>
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="College Name"
+              placeholder="Start typing a college name..."
+              required
+              fullWidth
+              onClick={() => {
+                if (collegeQuery.length >= 2) {
+                  setOpen(true);
+                }
+              }}
+              InputProps={{
+                ...params.InputProps,
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <>
+                    {loading ? <CircularProgress color="inherit" size={20} /> : null}
+                    {params.InputProps.endAdornment}
+                  </>
+                ),
+              }}
+              helperText="Type at least 2 characters to search"
+            />
           )}
+          noOptionsText="No colleges found. Try a different search term."
+          loadingText="Searching colleges..."
+          sx={{ mb: 2 }}
+        />
 
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            size="large"
-            fullWidth
-            sx={{ mt: 3 }}
-          >
-            Submit Request
-          </Button>
-        </form>
-      </Paper>
-    </Box>
+        <TextField
+          label="Email"
+          type="email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+          fullWidth
+          sx={{ mb: 3 }}
+        />
+
+        <Button
+          type="submit"
+          variant="contained"
+          color="primary"
+          size="large"
+          fullWidth
+        >
+          Submit Request
+        </Button>
+      </Box>
+    </Paper>
   );
-};
+}
 
 export default RequestForm; 

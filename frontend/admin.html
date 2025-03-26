@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - College Merchandise Requests</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .login-form {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .error {
+            color: red;
+            margin-top: 5px;
+            display: none;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .status-pending {
+            color: #ffc107;
+        }
+        .status-approved {
+            color: #28a745;
+        }
+        .status-rejected {
+            color: #dc3545;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        .action-button {
+            padding: 5px 10px;
+            font-size: 0.9em;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loginSection" class="login-form">
+            <h2>Admin Login</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit">Login</button>
+                <div id="loginError" class="error"></div>
+            </form>
+        </div>
+
+        <div id="dashboardSection" class="hidden">
+            <h2>Merchandise Requests</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>College</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="requestsTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        let token = localStorage.getItem('adminToken');
+
+        // DOM Elements
+        const loginSection = document.getElementById('loginSection');
+        const dashboardSection = document.getElementById('dashboardSection');
+        const loginForm = document.getElementById('loginForm');
+        const loginError = document.getElementById('loginError');
+        const requestsTableBody = document.getElementById('requestsTableBody');
+
+        // Event Listeners
+        loginForm.addEventListener('submit', handleLogin);
+        document.addEventListener('DOMContentLoaded', checkAuth);
+
+        // Functions
+        function checkAuth() {
+            if (token) {
+                showDashboard();
+                fetchRequests();
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            loginError.style.display = 'none';
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(`${API_URL}/admin/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (!response.ok) throw new Error('Login failed');
+
+                const data = await response.json();
+                token = data.token;
+                localStorage.setItem('adminToken', token);
+                showDashboard();
+                fetchRequests();
+            } catch (error) {
+                console.error('Login error:', error);
+                loginError.textContent = 'Invalid credentials';
+                loginError.style.display = 'block';
+            }
+        }
+
+        function showDashboard() {
+            loginSection.classList.add('hidden');
+            dashboardSection.classList.remove('hidden');
+        }
+
+        async function fetchRequests() {
+            try {
+                const response = await fetch(`${API_URL}/requests`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to fetch requests');
+
+                const requests = await response.json();
+                displayRequests(requests);
+            } catch (error) {
+                console.error('Error fetching requests:', error);
+                if (error.message === 'Failed to fetch requests') {
+                    localStorage.removeItem('adminToken');
+                    location.reload();
+                }
+            }
+        }
+
+        function displayRequests(requests) {
+            requestsTableBody.innerHTML = '';
+            requests.forEach(request => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${request.id}</td>
+                    <td>${request.college_name}</td>
+                    <td>${request.email}</td>
+                    <td class="status-${request.status.toLowerCase()}">${request.status}</td>
+                    <td>${new Date(request.created_at).toLocaleString()}</td>
+                    <td class="action-buttons">
+                        <button class="action-button" onclick="updateStatus(${request.id}, 'approved')">Approve</button>
+                        <button class="action-button" onclick="updateStatus(${request.id}, 'rejected')">Reject</button>
+                    </td>
+                `;
+                requestsTableBody.appendChild(row);
+            });
+        }
+
+        async function updateStatus(id, status) {
+            try {
+                const response = await fetch(`${API_URL}/requests/${id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ status })
+                });
+
+                if (!response.ok) throw new Error('Failed to update status');
+
+                fetchRequests();
+            } catch (error) {
+                console.error('Error updating status:', error);
+                if (error.message === 'Failed to update status') {
+                    localStorage.removeItem('adminToken');
+                    location.reload();
+                }
+            }
+        }
+    </script>
+</body>
+</html> 
