@@ -299,8 +299,8 @@
     </div>
 
     <script>
-        // Use direct URL for testing to ensure it works
-        const API_URL = 'http://localhost:3000/api';
+        // Use relative URL that works in both local and deployed environments
+        const API_URL = '/api';
         
         let token = localStorage.getItem('adminToken');
         let schoolStatistics = [];
