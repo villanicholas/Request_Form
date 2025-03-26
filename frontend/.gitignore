@@ -1,0 +1,28 @@
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+*.env
+
+# Dependencies
+node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Build directories
+/build
+/dist
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Cache
+.cache/ 

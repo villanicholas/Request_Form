@@ -1,0 +1,76 @@
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+*.env
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+.pnp/
+.pnp.js
+.npm
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+ENV/
+.pytest_cache/
+
+# SQLite database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs
+*.log
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Build directories
+/build
+/dist
+
+# Coverage directory
+/coverage
+
+# Debug files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# System Files
+.DS_Store
+Thumbs.db 
