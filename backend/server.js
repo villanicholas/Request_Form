@@ -208,22 +208,40 @@ app.on('request', async (req, res) => {
         return;
       }
 
-      db.run(
-        `INSERT INTO requests (college_name, email)
-         VALUES (?, ?)`,
-        [body.college_name, body.email],
-        function(err) {
-          if (err) {
-            console.error('Error saving request:', err);
-            sendJsonResponse(res, { error: 'Failed to save request' }, 500);
-            return;
-          }
-          sendJsonResponse(res, {
-            message: 'Request submitted successfully',
-            request_id: this.lastID
-          }, 201);
+      // Check if email has already been used
+      db.get('SELECT id FROM requests WHERE email = ?', [body.email], (err, row) => {
+        if (err) {
+          console.error('Error checking email:', err);
+          sendJsonResponse(res, { error: 'Failed to process request' }, 500);
+          return;
         }
-      );
+        
+        if (row) {
+          // Email already exists
+          sendJsonResponse(res, { 
+            error: 'This email has already been used to submit a request. Each email can only be used once.'
+          }, 400);
+          return;
+        }
+        
+        // Email doesn't exist, proceed with insertion
+        db.run(
+          `INSERT INTO requests (college_name, email)
+           VALUES (?, ?)`,
+          [body.college_name, body.email],
+          function(err) {
+            if (err) {
+              console.error('Error saving request:', err);
+              sendJsonResponse(res, { error: 'Failed to save request' }, 500);
+              return;
+            }
+            sendJsonResponse(res, {
+              message: 'Request submitted successfully',
+              request_id: this.lastID
+            }, 201);
+          }
+        );
+      });
       return;
     }
 

@@ -197,11 +197,18 @@ async function handleSubmit(e) {
             })
         });
         
+        const result = await response.json();
+        
         if (!response.ok) {
-            throw new Error(`Submission failed with status: ${response.status}`);
+            // Check for specific error messages
+            if (result.error && result.error.includes('email has already been used')) {
+                showError(result.error);
+            } else {
+                throw new Error(result.error || `Submission failed with status: ${response.status}`);
+            }
+            return;
         }
         
-        const result = await response.json();
         showSuccess('Request submitted successfully!');
         
         // Reset the form
