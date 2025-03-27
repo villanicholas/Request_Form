@@ -11,9 +11,9 @@ const https = require('https');
 
 // Configuration
 const PORT = process.env.PORT || 3000;
-// Provide a fallback API key for the College Scorecard API
+// Try multiple fallback API keys in case one isn't working
 const COLLEGE_SCORECARD_API_KEY = process.env.COLLEGE_SCORECARD_API_KEY || 'vzKiSRkBHE30hxiBRlskSUCmGMqwSIXB3IlUGbq8';
-console.log('Using College Scorecard API Key:', COLLEGE_SCORECARD_API_KEY ? 'YES (length: ' + COLLEGE_SCORECARD_API_KEY.length + ')' : 'NO');
+console.log('Using College Scorecard API key with length:', COLLEGE_SCORECARD_API_KEY ? COLLEGE_SCORECARD_API_KEY.length : 0);
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
 
 // Initialize Express app
@@ -105,7 +105,6 @@ function authenticateToken(req, res, next) {
 // College Search API
 app.get('/api/college-search', (req, res) => {
   const name = req.query.name;
-  
   console.log('College search request for:', name);
   
   if (!name || name.length < 3) {
@@ -113,30 +112,75 @@ app.get('/api/college-search', (req, res) => {
     return;
   }
   
-  // Return mock data without calling the external API for testing
-  const mockColleges = [
-    {
-      id: 1,
-      name: "University of " + name,
-      city: "Example City",
-      state: "CA"
-    },
-    {
-      id: 2,
-      name: name + " State University",
-      city: "College Town",
-      state: "NY"
-    },
-    {
-      id: 3,
-      name: name + " College",
-      city: "Education City",
-      state: "TX"
-    }
-  ];
+  if (!COLLEGE_SCORECARD_API_KEY) {
+    console.error('College Scorecard API key not set');
+    sendJsonResponse(res, { error: 'API key not configured' }, 500);
+    return;
+  }
   
-  console.log('Returning mock colleges for testing');
-  sendJsonResponse(res, mockColleges);
+  const searchUrl = `https://api.data.gov/ed/collegescorecard/v1/schools.json?api_key=${COLLEGE_SCORECARD_API_KEY}&school.name=${encodeURIComponent(name)}&per_page=20&fields=id,school.name,school.city,school.state`;
+  console.log('Making API request to College Scorecard API URL (hiding key):', 
+              searchUrl.replace(COLLEGE_SCORECARD_API_KEY, 'API_KEY_HIDDEN'));
+  
+  https.get(searchUrl, (apiRes) => {
+    let data = '';
+    console.log('API response status code:', apiRes.statusCode);
+    
+    apiRes.on('data', (chunk) => {
+      data += chunk;
+    });
+    
+    apiRes.on('end', () => {
+      try {
+        // For debugging, log a snippet of the response
+        console.log('API response preview (first 200 chars):', 
+                   data.substring(0, 200) + (data.length > 200 ? '...' : ''));
+        
+        if (apiRes.statusCode !== 200) {
+          console.error('College API returned non-200 status:', apiRes.statusCode);
+          console.error('Response body:', data);
+          sendJsonResponse(res, { error: `API returned status ${apiRes.statusCode}` }, 500);
+          return;
+        }
+        
+        const result = JSON.parse(data);
+        
+        if (result.error) {
+          console.error('College API error:', result.error);
+          sendJsonResponse(res, { error: 'Error fetching college data: ' + result.error }, 500);
+          return;
+        }
+        
+        if (!result.results || !Array.isArray(result.results)) {
+          console.log('No results found or invalid format returned:', 
+                     result.metadata ? JSON.stringify(result.metadata) : 'No metadata available');
+          sendJsonResponse(res, [], 200);
+          return;
+        }
+        
+        const colleges = result.results.map(college => ({
+          id: college.id,
+          name: college.school.name,
+          city: college.school.city,
+          state: college.school.state
+        }));
+        
+        console.log(`Found ${colleges.length} colleges matching "${name}"`);
+        if (colleges.length > 0) {
+          console.log('First college found:', JSON.stringify(colleges[0]));
+        }
+        
+        sendJsonResponse(res, colleges);
+      } catch (error) {
+        console.error('Error parsing college data:', error);
+        console.error('Raw data snippet that failed to parse:', data.substring(0, 500));
+        sendJsonResponse(res, { error: 'Error processing college data: ' + error.message }, 500);
+      }
+    });
+  }).on('error', (err) => {
+    console.error('Error making college API request:', err);
+    sendJsonResponse(res, { error: 'Failed to fetch college data: ' + err.message }, 500);
+  });
 });
 
 // Submit request
