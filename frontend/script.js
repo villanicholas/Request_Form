@@ -177,11 +177,17 @@ async function handleSubmit(e) {
     successMessage.style.display = 'none';
     
     const collegeName = selectedCollegeInput.value.trim();
+    const buildingName = document.getElementById('building-name').value.trim();
     const email = document.getElementById('email').value.trim();
     
     // Validation
     if (!collegeName) {
         showError('Please select a college from the dropdown');
+        return;
+    }
+    
+    if (!buildingName) {
+        showError('Please enter a building name');
         return;
     }
     
@@ -193,6 +199,7 @@ async function handleSubmit(e) {
             },
             body: JSON.stringify({
                 college_name: collegeName,
+                building_name: buildingName,
                 email: email
             })
         });

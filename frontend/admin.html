@@ -191,6 +191,7 @@
                         <tr>
                             <th>ID</th>
                             <th>College</th>
+                            <th>Building</th>
                             <th>Email</th>
                             <th>Status</th>
                             <th>Date</th>
@@ -392,6 +393,7 @@
                 row.innerHTML = `
                     <td>${request.id}</td>
                     <td>${request.college_name}</td>
+                    <td>${request.building_name}</td>
                     <td>${request.email}</td>
                     <td class="status-${request.status.toLowerCase()}">${statusSelect}</td>
                     <td>${new Date(request.created_at).toLocaleString()}</td>

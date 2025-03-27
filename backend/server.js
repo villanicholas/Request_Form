@@ -37,6 +37,7 @@ const db = new sqlite3.Database(path.join(__dirname, 'merchandise.db'), (err) =>
   db.run(`CREATE TABLE IF NOT EXISTS requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     college_name TEXT NOT NULL,
+    building_name TEXT NOT NULL,
     email TEXT NOT NULL,
     status TEXT DEFAULT 'pending',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -190,8 +191,8 @@ app.post('/api/submit-request', (req, res) => {
   console.log('Received request submission:', body);
   
   // Validate request
-  if (!body.college_name || !body.email) {
-    sendJsonResponse(res, { error: 'College name and email are required' }, 400);
+  if (!body.college_name || !body.building_name || !body.email) {
+    sendJsonResponse(res, { error: 'College name, building name, and email are required' }, 400);
     return;
   }
   
@@ -219,8 +220,8 @@ app.post('/api/submit-request', (req, res) => {
     
     // Email doesn't exist, proceed with insertion
     db.run(
-      'INSERT INTO requests (college_name, email) VALUES (?, ?)',
-      [body.college_name, body.email],
+      'INSERT INTO requests (college_name, building_name, email) VALUES (?, ?, ?)',
+      [body.college_name, body.building_name, body.email],
       function(err) {
         if (err) {
           console.error('Error saving request:', err);
