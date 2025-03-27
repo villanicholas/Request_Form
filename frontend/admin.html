@@ -186,11 +186,36 @@
             
             <div id="requestsTab" class="tab-content">
                 <h3>Merchandise Requests</h3>
-                <table>
+                <div>
+                    <label for="viewMode">View Mode:</label>
+                    <select id="viewMode" onchange="changeViewMode(this.value)">
+                        <option value="schools">Group by School</option>
+                        <option value="requests">Individual Requests</option>
+                    </select>
+                </div>
+                
+                <!-- Schools Table (Grouped) -->
+                <table id="schoolsTable">
+                    <thead>
+                        <tr>
+                            <th>College</th>
+                            <th>Building(s)</th>
+                            <th>Total Requests</th>
+                            <th>Status</th>
+                            <th>Latest Request</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="schoolsTableBody"></tbody>
+                </table>
+                
+                <!-- Individual Requests Table (Hidden by Default) -->
+                <table id="requestsTable" style="display: none;">
                     <thead>
                         <tr>
                             <th>ID</th>
                             <th>College</th>
+                            <th>Building</th>
                             <th>Email</th>
                             <th>Status</th>
                             <th>Date</th>
@@ -245,6 +270,9 @@
         const loginForm = document.getElementById('loginForm');
         const loginError = document.getElementById('loginError');
         const requestsTableBody = document.getElementById('requestsTableBody');
+        const schoolsTableBody = document.getElementById('schoolsTableBody');
+        const schoolsTable = document.getElementById('schoolsTable');
+        const requestsTable = document.getElementById('requestsTable');
         const schoolStatsTableBody = document.getElementById('schoolStatsTableBody');
         const tabs = document.querySelectorAll('.tab');
         const tabContents = document.querySelectorAll('.tab-content');
@@ -373,7 +401,81 @@
         }
 
         function displayRequests(requests) {
+            // Clear both tables
             requestsTableBody.innerHTML = '';
+            schoolsTableBody.innerHTML = '';
+            
+            // Group requests by college name
+            const schoolGroups = {};
+            
+            requests.forEach(request => {
+                const collegeName = request.college_name;
+                
+                if (!schoolGroups[collegeName]) {
+                    schoolGroups[collegeName] = {
+                        college_name: collegeName,
+                        requests: [],
+                        buildings: new Set(),
+                        latestDate: new Date(request.created_at)
+                    };
+                }
+                
+                schoolGroups[collegeName].requests.push(request);
+                schoolGroups[collegeName].buildings.add(request.building_name);
+                
+                // Track the latest request date
+                const requestDate = new Date(request.created_at);
+                if (requestDate > schoolGroups[collegeName].latestDate) {
+                    schoolGroups[collegeName].latestDate = requestDate;
+                }
+            });
+            
+            // Populate schools table (grouped view)
+            Object.values(schoolGroups).forEach(group => {
+                const row = document.createElement('tr');
+                
+                // Determine the current status (use the most common one)
+                const statusCounts = {};
+                group.requests.forEach(req => {
+                    statusCounts[req.status] = (statusCounts[req.status] || 0) + 1;
+                });
+                
+                let currentStatus = 'pending';
+                let maxCount = 0;
+                
+                for (const [status, count] of Object.entries(statusCounts)) {
+                    if (count > maxCount) {
+                        maxCount = count;
+                        currentStatus = status;
+                    }
+                }
+                
+                // Create the status dropdown
+                const statusSelect = `
+                    <select class="status-select" onchange="updateCollegeStatus('${encodeURIComponent(group.college_name)}', this.value)">
+                        <option value="pending" ${currentStatus === 'pending' ? 'selected' : ''}>Pending</option>
+                        <option value="applied" ${currentStatus === 'applied' ? 'selected' : ''}>Applied</option>
+                        <option value="accepted" ${currentStatus === 'accepted' ? 'selected' : ''}>Accepted</option>
+                        <option value="declined" ${currentStatus === 'declined' ? 'selected' : ''}>Declined</option>
+                        <option value="approved" ${currentStatus === 'approved' ? 'selected' : ''}>Approved</option>
+                        <option value="rejected" ${currentStatus === 'rejected' ? 'selected' : ''}>Rejected</option>
+                    </select>
+                `;
+                
+                row.innerHTML = `
+                    <td>${group.college_name}</td>
+                    <td>${Array.from(group.buildings).join(', ')}</td>
+                    <td>${group.requests.length}</td>
+                    <td class="status-${currentStatus.toLowerCase()}">${statusSelect}</td>
+                    <td>${group.latestDate.toLocaleString()}</td>
+                    <td class="action-buttons">
+                        <button class="action-button" onclick="viewSchoolDetails('${encodeURIComponent(group.college_name)}')">Details</button>
+                    </td>
+                `;
+                schoolsTableBody.appendChild(row);
+            });
+            
+            // Populate individual requests table
             requests.forEach(request => {
                 const row = document.createElement('tr');
                 
@@ -392,6 +494,7 @@
                 row.innerHTML = `
                     <td>${request.id}</td>
                     <td>${request.college_name}</td>
+                    <td>${request.building_name}</td>
                     <td>${request.email}</td>
                     <td class="status-${request.status.toLowerCase()}">${statusSelect}</td>
                     <td>${new Date(request.created_at).toLocaleString()}</td>
@@ -401,6 +504,61 @@
                 `;
                 requestsTableBody.appendChild(row);
             });
+        }
+
+        function changeViewMode(mode) {
+            if (mode === 'schools') {
+                schoolsTable.style.display = 'table';
+                requestsTable.style.display = 'none';
+            } else {
+                schoolsTable.style.display = 'none';
+                requestsTable.style.display = 'table';
+            }
+        }
+
+        async function updateCollegeStatus(encodedCollegeName, status) {
+            const collegeName = decodeURIComponent(encodedCollegeName);
+            console.log(`Updating status for all requests from college "${collegeName}" to ${status}`);
+            
+            try {
+                const updateUrl = `${API_URL}/admin/college/${encodeURIComponent(collegeName)}/status`;
+                console.log('Update URL:', updateUrl);
+                
+                const response = await fetch(updateUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ status })
+                });
+
+                console.log('Update response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorData = await response.text();
+                    console.error('Update error response:', errorData);
+                    throw new Error('Failed to update college status');
+                }
+
+                const result = await response.json();
+                console.log('Status updated successfully for all requests:', result);
+                
+                // Reload the requests to reflect changes
+                fetchRequests();
+            } catch (error) {
+                console.error('Error updating college status:', error);
+                if (error.message === 'Failed to update college status') {
+                    localStorage.removeItem('adminToken');
+                    location.reload();
+                }
+            }
+        }
+
+        function viewSchoolDetails(encodedCollegeName) {
+            const collegeName = decodeURIComponent(encodedCollegeName);
+            alert(`View details for school: ${collegeName}`);
+            // This could be expanded to show a modal with all requests from this school
         }
 
         async function updateStatus(id, status) {

@@ -37,6 +37,7 @@ const db = new sqlite3.Database(path.join(__dirname, 'merchandise.db'), (err) =>
   db.run(`CREATE TABLE IF NOT EXISTS requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     college_name TEXT NOT NULL,
+    building_name TEXT NOT NULL,
     email TEXT NOT NULL,
     status TEXT DEFAULT 'pending',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -190,8 +191,8 @@ app.post('/api/submit-request', (req, res) => {
   console.log('Received request submission:', body);
   
   // Validate request
-  if (!body.college_name || !body.email) {
-    sendJsonResponse(res, { error: 'College name and email are required' }, 400);
+  if (!body.college_name || !body.building_name || !body.email) {
+    sendJsonResponse(res, { error: 'College name, building name, and email are required' }, 400);
     return;
   }
   
@@ -219,8 +220,8 @@ app.post('/api/submit-request', (req, res) => {
     
     // Email doesn't exist, proceed with insertion
     db.run(
-      'INSERT INTO requests (college_name, email) VALUES (?, ?)',
-      [body.college_name, body.email],
+      'INSERT INTO requests (college_name, building_name, email) VALUES (?, ?, ?)',
+      [body.college_name, body.building_name, body.email],
       function(err) {
         if (err) {
           console.error('Error saving request:', err);
@@ -330,6 +331,42 @@ app.put('/api/admin/requests/:id/status', authenticateToken, (req, res) => {
   );
 });
 
+// Update status for all requests from a college
+app.put('/api/admin/college/:collegeName/status', authenticateToken, (req, res) => {
+  const { collegeName } = req.params;
+  const { status } = req.body;
+  
+  console.log(`Updating all requests for college "${collegeName}" to status ${status}`);
+  
+  if (!status || !['pending', 'approved', 'rejected', 'applied', 'accepted', 'declined'].includes(status)) {
+    sendJsonResponse(res, { error: 'Invalid status value' }, 400);
+    return;
+  }
+  
+  db.run(
+    'UPDATE requests SET status = ? WHERE college_name = ?',
+    [status, collegeName],
+    function(err) {
+      if (err) {
+        console.error('Error updating college requests status:', err);
+        sendJsonResponse(res, { error: 'Failed to update requests status' }, 500);
+        return;
+      }
+      
+      if (this.changes === 0) {
+        sendJsonResponse(res, { error: 'No requests found for this college' }, 404);
+        return;
+      }
+      
+      console.log(`Updated ${this.changes} requests for ${collegeName} to ${status}`);
+      sendJsonResponse(res, { 
+        message: `Status updated for all requests from ${collegeName}`,
+        count: this.changes
+      });
+    }
+  );
+});
+
 // Public endpoint to get school statistics for the homepage
 app.get('/api/public/school-stats', (req, res) => {
   console.log('Fetching public school statistics');
@@ -356,6 +393,41 @@ app.get('/api/public/school-stats', (req, res) => {
     }
     
     console.log(`Found statistics for ${rows ? rows.length : 0} schools`);
+    sendJsonResponse(res, rows || []);
+  });
+});
+
+// Admin endpoint to get detailed school statistics for analytics
+app.get('/api/statistics/schools', authenticateToken, (req, res) => {
+  console.log('Fetching detailed school statistics for admin analytics');
+  
+  // Query to get college names and count of requests with status counts
+  const query = `
+    SELECT 
+      college_name,
+      COUNT(*) as request_count,
+      SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count,
+      SUM(CASE WHEN status = 'applied' THEN 1 ELSE 0 END) as applied_count,
+      SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END) as accepted_count,
+      SUM(CASE WHEN status = 'declined' THEN 1 ELSE 0 END) as declined_count,
+      SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved_count,
+      SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_count
+    FROM 
+      requests
+    GROUP BY 
+      college_name
+    ORDER BY 
+      request_count DESC
+  `;
+  
+  db.all(query, [], (err, rows) => {
+    if (err) {
+      console.error('Error fetching detailed school statistics:', err);
+      sendJsonResponse(res, { error: 'Failed to fetch school statistics' }, 500);
+      return;
+    }
+    
+    console.log(`Found detailed statistics for ${rows ? rows.length : 0} schools`);
     sendJsonResponse(res, rows || []);
   });
 });
