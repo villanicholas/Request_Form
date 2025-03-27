@@ -1,6 +1,5 @@
 // Configuration
-// Use hardcoded URL for local testing
-const API_URL = 'http://localhost:3000/api';
+const API_URL = 'http://localhost:5001/api';
 
 // DOM Elements
 const collegeSearchInput = document.getElementById('college-search');

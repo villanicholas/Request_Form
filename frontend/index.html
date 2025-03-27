@@ -2,12 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#1976d2">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Traditions Collegiate Apparel - Request Form</title>
-    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
     <link rel="stylesheet" href="styles.css">
     <style>
@@ -122,8 +118,7 @@
             <p>The table below shows colleges that have requested merchandise and their current status.</p>
             
             <div class="admin-controls">
-
-                <p>Logged in as Admin. You can edit statuses in the <a href="admin.html">Admin Dashboard</a>.</p>
+                <p>Logged in as Admin. You can edit statuses in the <a href="/admin.html">Admin Dashboard</a>.</p>
                 <button id="logout-btn" class="btn-submit">Logout</button>
             </div>
             
@@ -153,9 +148,7 @@
     <script>
         // School statistics functionality
         document.addEventListener('DOMContentLoaded', function() {
-            // Use direct URL for testing to ensure it works
-            const API_URL = 'http://localhost:3000/api';
-            
+            const API_URL = 'http://localhost:5001/api';
             const statsTableBody = document.getElementById('stats-table-body');
             const statsLoading = document.getElementById('stats-loading');
             const adminLoginBtn = document.getElementById('admin-login-btn');
@@ -171,7 +164,7 @@
             
             // Admin login button click
             adminLoginBtn.addEventListener('click', function() {
-                window.location.href = 'admin.html';
+                window.location.href = '/admin.html';
             });
             
             // Admin logout
