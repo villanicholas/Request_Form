@@ -1,5 +1,5 @@
 // Configuration
-const API_URL = 'http://localhost:5001/api';
+const API_URL = '/api';
 
 // DOM Elements
 const collegeSearchInput = document.getElementById('college-search');
@@ -34,7 +34,7 @@ function handleCollegeInput(e) {
     // Clear the selected college when input changes
     selectedCollegeInput.value = '';
     
-    if (query.length < 2) {
+    if (query.length < 3) {
         collegeDropdown.style.display = 'none';
         return;
     }
@@ -52,22 +52,16 @@ async function searchColleges(query) {
     
     try {
         console.log('Searching for colleges with query:', query);
-        console.log('API URL:', `${API_URL}/search-colleges?query=${encodeURIComponent(query)}`);
-        
-        const response = await fetch(`${API_URL}/search-colleges?query=${encodeURIComponent(query)}`);
-        console.log('Response status:', response.status);
+        const response = await fetch(`${API_URL}/college-search?name=${encodeURIComponent(query)}`);
         
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Error response:', errorText);
-            throw new Error(`Search failed with status: ${response.status}, message: ${errorText}`);
+            throw new Error(`Search failed with status: ${response.status}`);
         }
         
         const data = await response.json();
         console.log('College search response:', data);
         
         colleges = Array.isArray(data) ? data : [];
-        console.log('Processed colleges:', colleges);
         displayColleges();
     } catch (error) {
         console.error('Error searching colleges:', error);
