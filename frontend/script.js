@@ -52,16 +52,22 @@ async function searchColleges(query) {
     
     try {
         console.log('Searching for colleges with query:', query);
+        console.log('API URL:', `${API_URL}/search-colleges?query=${encodeURIComponent(query)}`);
+        
         const response = await fetch(`${API_URL}/search-colleges?query=${encodeURIComponent(query)}`);
+        console.log('Response status:', response.status);
         
         if (!response.ok) {
-            throw new Error(`Search failed with status: ${response.status}`);
+            const errorText = await response.text();
+            console.error('Error response:', errorText);
+            throw new Error(`Search failed with status: ${response.status}, message: ${errorText}`);
         }
         
         const data = await response.json();
         console.log('College search response:', data);
         
         colleges = Array.isArray(data) ? data : [];
+        console.log('Processed colleges:', colleges);
         displayColleges();
     } catch (error) {
         console.error('Error searching colleges:', error);
