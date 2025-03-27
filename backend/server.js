@@ -160,9 +160,9 @@ app.get('/api/college-search', (req, res) => {
         
         const colleges = result.results.map(college => ({
           id: college.id,
-          name: college.school.name,
-          city: college.school.city,
-          state: college.school.state
+          name: college["school.name"],
+          city: college["school.city"],
+          state: college["school.state"]
         }));
         
         console.log(`Found ${colleges.length} colleges matching "${name}"`);
@@ -305,7 +305,7 @@ app.put('/api/admin/requests/:id/status', authenticateToken, (req, res) => {
   
   console.log(`Updating request ${id} status to ${status}`);
   
-  if (!status || !['pending', 'approved', 'rejected'].includes(status)) {
+  if (!status || !['pending', 'approved', 'rejected', 'applied', 'accepted', 'declined'].includes(status)) {
     sendJsonResponse(res, { error: 'Invalid status value' }, 400);
     return;
   }
@@ -328,6 +328,36 @@ app.put('/api/admin/requests/:id/status', authenticateToken, (req, res) => {
       sendJsonResponse(res, { message: 'Request status updated successfully' });
     }
   );
+});
+
+// Public endpoint to get school statistics for the homepage
+app.get('/api/public/school-stats', (req, res) => {
+  console.log('Fetching public school statistics');
+  
+  // Query to get college names, count of requests, and latest status
+  const query = `
+    SELECT 
+      college_name,
+      COUNT(*) as request_count,
+      MAX(status) as latest_status
+    FROM 
+      requests
+    GROUP BY 
+      college_name
+    ORDER BY 
+      college_name ASC
+  `;
+  
+  db.all(query, [], (err, rows) => {
+    if (err) {
+      console.error('Error fetching school statistics:', err);
+      sendJsonResponse(res, { error: 'Failed to fetch school statistics' }, 500);
+      return;
+    }
+    
+    console.log(`Found statistics for ${rows ? rows.length : 0} schools`);
+    sendJsonResponse(res, rows || []);
+  });
 });
 
 // Serve frontend
