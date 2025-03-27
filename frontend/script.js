@@ -1,6 +1,6 @@
 // Configuration
-// Use relative URLs that work in both local and deployed environments
-const API_URL = '/api';
+// Use hardcoded URL for local testing
+const API_URL = 'http://localhost:3000/api';
 
 // DOM Elements
 const collegeSearchInput = document.getElementById('college-search');

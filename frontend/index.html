@@ -153,8 +153,8 @@
     <script>
         // School statistics functionality
         document.addEventListener('DOMContentLoaded', function() {
-            // Use relative URL that works in both local and deployed environments
-            const API_URL = '/api';
+            // Use direct URL for testing to ensure it works
+            const API_URL = 'http://localhost:3000/api';
             
             const statsTableBody = document.getElementById('stats-table-body');
             const statsLoading = document.getElementById('stats-loading');
