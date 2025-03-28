@@ -151,10 +151,8 @@
 
     <script>
         // Backend URL configuration
-        const BACKEND_URL = window.location.hostname === 'localhost' 
-            ? 'http://localhost:3000' 
-            : 'https://traditionsrequestform-backend.onrender.com'; // Replace with your actual Render backend URL
-        const API_URL = `${BACKEND_URL}/api`;
+        window.BACKEND_URL = 'http://localhost:3000';
+        window.API_URL = `${window.BACKEND_URL}/api`;
     </script>
     <script src="script.js"></script>
     <script>
@@ -190,7 +188,7 @@
                 try {
                     statsLoading.style.display = 'flex';
                     
-                    const response = await fetch(`${API_URL}/public/school-stats`);
+                    const response = await fetch(`${window.API_URL}/public/school-stats`);
                     if (!response.ok) throw new Error('Failed to fetch statistics');
                     
                     const statistics = await response.json();
