@@ -1,5 +1,5 @@
 // Configuration
-const API_URL = '/api';
+const API_URL = window.API_URL || 'http://localhost:3000/api';
 
 // DOM Elements
 const collegeSearchInput = document.getElementById('college-search');

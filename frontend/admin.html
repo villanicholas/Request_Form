@@ -260,8 +260,14 @@
     </div>
 
     <script>
-        const API_URL = '/api';
-        let token = localStorage.getItem('adminToken');
+        // Set backend URL
+        window.BACKEND_URL = 'http://localhost:3000';
+        window.API_URL = `${window.BACKEND_URL}/api`;
+        
+        // Admin functionality
+        let requests = [];
+        let currentView = 'schools'; // 'schools' or 'requests'
+        let adminToken = localStorage.getItem('adminToken');
         let schoolStatistics = [];
 
         // DOM Elements
@@ -312,7 +318,7 @@
 
         // Functions
         function checkAuth() {
-            if (token) {
+            if (adminToken) {
                 console.log('Found existing token, showing dashboard');
                 showDashboard();
                 fetchRequests();
@@ -352,8 +358,8 @@
 
                 const data = await response.json();
                 console.log('Login successful, received token');
-                token = data.token;
-                localStorage.setItem('adminToken', token);
+                adminToken = data.token;
+                localStorage.setItem('adminToken', adminToken);
                 showDashboard();
                 fetchRequests();
             } catch (error) {
@@ -369,14 +375,14 @@
         }
 
         async function fetchRequests() {
-            console.log('Fetching requests with token:', token ? 'Token exists' : 'No token');
+            console.log('Fetching requests with token:', adminToken ? 'Token exists' : 'No token');
             try {
                 const requestsUrl = `${API_URL}/admin/requests`;
                 console.log('Requests URL:', requestsUrl);
                 
                 const response = await fetch(requestsUrl, {
                     headers: {
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${adminToken}`
                     }
                 });
 
@@ -388,7 +394,7 @@
                     throw new Error('Failed to fetch requests');
                 }
 
-                const requests = await response.json();
+                requests = await response.json();
                 console.log('Received requests:', requests);
                 displayRequests(requests);
             } catch (error) {
@@ -528,7 +534,7 @@
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${adminToken}`
                     },
                     body: JSON.stringify({ status })
                 });
@@ -571,7 +577,7 @@
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${adminToken}`
                     },
                     body: JSON.stringify({ status })
                 });
@@ -604,7 +610,7 @@
             try {
                 const response = await fetch(`${API_URL}/statistics/schools`, {
                     headers: {
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${adminToken}`
                     }
                 });
 
