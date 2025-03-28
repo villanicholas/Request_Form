@@ -11,9 +11,9 @@ const https = require('https');
 
 // Configuration
 const PORT = process.env.PORT || 3000;
-// Try multiple fallback API keys in case one isn't working
-const COLLEGE_SCORECARD_API_KEY = process.env.COLLEGE_SCORECARD_API_KEY || 'vzKiSRkBHE30hxiBRlskSUCmGMqwSIXB3IlUGbq8';
-console.log('Using College Scorecard API key with length:', COLLEGE_SCORECARD_API_KEY ? COLLEGE_SCORECARD_API_KEY.length : 0);
+const COLLEGE_SCORECARD_API_KEY = process.env.COLLEGE_SCORECARD_API_KEY;
+console.log('College Scorecard API key present:', !!COLLEGE_SCORECARD_API_KEY);
+console.log('API key length:', COLLEGE_SCORECARD_API_KEY ? COLLEGE_SCORECARD_API_KEY.length : 0);
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
 
 // Initialize Express app
@@ -120,12 +120,13 @@ app.get('/api/college-search', (req, res) => {
   }
   
   const searchUrl = `https://api.data.gov/ed/collegescorecard/v1/schools.json?api_key=${COLLEGE_SCORECARD_API_KEY}&school.name=${encodeURIComponent(name)}&per_page=20&fields=id,school.name,school.city,school.state`;
-  console.log('Making API request to College Scorecard API URL (hiding key):', 
-              searchUrl.replace(COLLEGE_SCORECARD_API_KEY, 'API_KEY_HIDDEN'));
+  console.log('Making API request to College Scorecard API');
+  console.log('URL (without key):', searchUrl.replace(COLLEGE_SCORECARD_API_KEY, 'API_KEY_HIDDEN'));
   
   https.get(searchUrl, (apiRes) => {
     let data = '';
     console.log('API response status code:', apiRes.statusCode);
+    console.log('API response headers:', apiRes.headers);
     
     apiRes.on('data', (chunk) => {
       data += chunk;
@@ -133,7 +134,6 @@ app.get('/api/college-search', (req, res) => {
     
     apiRes.on('end', () => {
       try {
-        // For debugging, log a snippet of the response
         console.log('API response preview (first 200 chars):', 
                    data.substring(0, 200) + (data.length > 200 ? '...' : ''));
         
