@@ -153,8 +153,8 @@
         // Backend URL configuration
         const BACKEND_URL = window.location.hostname === 'localhost' 
             ? 'http://localhost:3000' 
-            : 'https://traditionsrequestform-backend.onrender.com'; // Replace with your actual Render backend URL
-        const API_URL = `${BACKEND_URL}/api`;
+            : 'https://traditionsrequestform-backend.onrender.com';
+        window.API_URL = `${BACKEND_URL}/api`;
     </script>
     <script src="script.js"></script>
     <script>
