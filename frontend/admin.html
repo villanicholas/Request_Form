@@ -261,12 +261,9 @@
 
     <script>
         // Set backend URL
-        window.BACKEND_URL = window.BACKEND_URL || 'http://localhost:3000';
+        window.BACKEND_URL = 'http://localhost:3000';
         window.API_URL = `${window.BACKEND_URL}/api`;
-        const API_URL = window.API_URL || 'http://localhost:3000/api';
-    </script>
-    <script src="script.js"></script>
-    <script>
+        
         // Admin functionality
         let requests = [];
         let currentView = 'schools'; // 'schools' or 'requests'
