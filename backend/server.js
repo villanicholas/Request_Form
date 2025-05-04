@@ -60,7 +60,9 @@ async function verifyEmail(email) {
           
           // Check if email is valid and deliverable
           const isValid = result.is_valid_format?.value && 
-                         result.is_deliverable?.value && 
+                         result.deliverability === 'DELIVERABLE' &&
+                         result.is_mx_found?.value &&
+                         result.is_smtp_valid?.value &&
                          !result.is_disposable_email?.value;
           
           resolve(isValid);
