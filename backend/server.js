@@ -12,6 +12,7 @@ const { Request, AdminUser } = require('./db');
 // Configuration
 const PORT = process.env.PORT || 3000;
 const COLLEGE_SCORECARD_API_KEY = process.env.COLLEGE_SCORECARD_API_KEY || 'vzKiSRkBHE30hxiBRlskSUCmGMqwSIXB3IlUGbq8';
+const ABSTRACT_EMAIL_API_KEY = process.env.ABSTRACT_EMAIL_API_KEY;
 console.log('Using College Scorecard API key with length:', COLLEGE_SCORECARD_API_KEY ? COLLEGE_SCORECARD_API_KEY.length : 0);
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
 
@@ -28,6 +29,55 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 function sendJsonResponse(res, data, statusCode = 200) {
   console.log(`Sending response with status ${statusCode}:`, typeof data === 'object' ? (Array.isArray(data) ? `Array with ${data.length} items` : JSON.stringify(data).substring(0, 100) + '...') : data);
   res.status(statusCode).json(data);
+}
+
+// Helper function to verify email using Abstract API
+async function verifyEmail(email) {
+  return new Promise((resolve, reject) => {
+    if (!ABSTRACT_EMAIL_API_KEY) {
+      console.warn('Abstract API key not set, skipping email verification');
+      resolve(true); // Skip verification if API key not set
+      return;
+    }
+
+    const options = {
+      hostname: 'emailvalidation.abstractapi.com',
+      path: `/v1/?api_key=${ABSTRACT_EMAIL_API_KEY}&email=${encodeURIComponent(email)}`,
+      method: 'GET'
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+
+      res.on('end', () => {
+        try {
+          const result = JSON.parse(data);
+          console.log('Email verification result:', result);
+          
+          // Check if email is valid and deliverable
+          const isValid = result.is_valid_format?.value && 
+                         result.is_deliverable?.value && 
+                         !result.is_disposable_email?.value;
+          
+          resolve(isValid);
+        } catch (error) {
+          console.error('Error parsing email verification response:', error);
+          reject(error);
+        }
+      });
+    });
+
+    req.on('error', (error) => {
+      console.error('Error verifying email:', error);
+      reject(error);
+    });
+
+    req.end();
+  });
 }
 
 // Middleware to authenticate JWT tokens
@@ -154,8 +204,15 @@ app.post('/api/submit-request', async (req, res) => {
     sendJsonResponse(res, { error: 'Invalid email format' }, 400);
     return;
   }
-  
+
   try {
+    // Verify email using Abstract API
+    const isEmailValid = await verifyEmail(body.email);
+    if (!isEmailValid) {
+      sendJsonResponse(res, { error: 'Invalid or non-deliverable email address' }, 400);
+      return;
+    }
+    
     // Check if email already exists
     const existingRequest = await Request.findOne({ email: body.email });
     if (existingRequest) {
