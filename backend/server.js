@@ -211,7 +211,7 @@ app.post('/api/submit-request', async (req, res) => {
     // Verify email using Abstract API
     const isEmailValid = await verifyEmail(body.email);
     if (!isEmailValid) {
-      sendJsonResponse(res, { error: 'Invalid or non-deliverable email address' }, 400);
+      sendJsonResponse(res, { error: 'This email address is not deliverable. Please provide a valid, active email address.' }, 400);
       return;
     }
     
